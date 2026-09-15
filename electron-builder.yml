@@ -43,7 +43,6 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  publisherName: Alma
 
 nsis:
   oneClick: false
