@@ -28,13 +28,18 @@ const NAV_ITEMS = [
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { t, locale, setLocale, settings, setTheme, sessions } = useAlma();
+  const { t, locale, setLocale, settings, setTheme, sessions, bridgeMissing } = useAlma();
   const pathname = usePathname();
   const connected = sessions.filter((s) => s.status === 'connected').length;
   const total = sessions.length;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      {bridgeMissing && (
+        <div className="absolute inset-x-0 top-0 z-50 bg-destructive px-4 py-1.5 text-center text-xs font-medium text-white">
+          Bridge unavailable — UI commands are disabled. (Running outside Electron?)
+        </div>
+      )}
       {/* Sidebar — always brand-ink so the white logo reads perfectly */}
       <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
         <div className="flex items-center gap-3 px-5 pt-6 pb-4">

@@ -33,9 +33,11 @@ function reviveError(err: unknown): Error & { code?: string; messageKey?: string
 }
 
 function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
-  return ipcRenderer.invoke(channel, ...args).catch((err) => {
-    throw reviveError(err);
-  });
+  return ipcRenderer
+    .invoke(channel, ...args)
+    .catch((err) => {
+      throw reviveError(err);
+    });
 }
 
 const commands: AlmaBridgeCommands = {
@@ -77,7 +79,8 @@ const commands: AlmaBridgeCommands = {
   setDockBadge: (count: number) => invoke('alma:app:dock-badge', count),
 };
 
-contextBridge.exposeInMainWorld('alma', {
+try {
+  contextBridge.exposeInMainWorld('alma', {
   commands,
   onEvent: (listener: (event: unknown) => void) => {
     const wrapped = (_event: unknown, payload: unknown) => listener(payload as never);
@@ -97,3 +100,7 @@ contextBridge.exposeInMainWorld('alma', {
     }
   },
 });
+  console.log('[alma:preload] bridge exposed with', Object.keys(commands).length, 'commands');
+} catch (err) {
+  console.error('[alma:preload] FAILED to expose bridge:', err);
+}

@@ -47,6 +47,7 @@ interface AlmaContextValue {
   settings: SettingsView;
   appInfo: AppInfo | null;
   ready: boolean;
+  bridgeMissing: boolean;
   // i18n + theme
   locale: Locale;
   dir: 'rtl' | 'ltr';
@@ -91,6 +92,7 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = React.useState<SettingsView>(DEFAULT_SETTINGS);
   const [appInfo, setAppInfo] = React.useState<AppInfo | null>(null);
   const [ready, setReady] = React.useState(false);
+  const [bridgeMissing, setBridgeMissing] = React.useState(false);
 
   const locale = settings.locale;
   const dir: 'rtl' | 'ltr' = locale === 'ar' ? 'rtl' : 'ltr';
@@ -102,7 +104,12 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
 
   // ---- initial load ----
   React.useEffect(() => {
-    if (!bridgeAvailable()) return;
+    if (!bridgeAvailable()) {
+      console.error('[alma] bridge UNAVAILABLE — window.alma is missing. UI commands will not work.');
+      setBridgeMissing(true);
+      setReady(true);
+      return;
+    }
     let disposed = false;
 
     void (async () => {
@@ -392,6 +399,7 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
       settings,
       appInfo,
       ready,
+      bridgeMissing,
       locale,
       dir,
       t,
@@ -402,7 +410,7 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
       actions,
       refreshAll,
     }),
-    [sessions, schedules, logs, dashboard, settings, appInfo, ready, locale, dir, t, setLocale, setTheme, registerMenuListener, takePendingAction, actions, refreshAll],
+    [sessions, schedules, logs, dashboard, settings, appInfo, ready, bridgeMissing, locale, dir, t, setLocale, setTheme, registerMenuListener, takePendingAction, actions, refreshAll],
   );
 
   return <AlmaContext.Provider value={value}>{children}</AlmaContext.Provider>;
