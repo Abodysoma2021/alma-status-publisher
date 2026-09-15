@@ -28,7 +28,7 @@ const NAV_ITEMS = [
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { t, locale, setLocale, settings, setTheme, sessions, bridgeMissing } = useAlma();
+  const { t, locale, setLocale, settings, setTheme, sessions, bridgeMissing, appInfo } = useAlma();
   const pathname = usePathname();
   const connected = sessions.filter((s) => s.status === 'connected').length;
   const total = sessions.length;
@@ -42,8 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       {/* Sidebar — always brand-ink so the white logo reads perfectly */}
       <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-3 px-5 pt-6 pb-4">
-          <AlmaLogo height={24} />
+        <div className="drag-region flex items-center px-5 pt-12 pb-5">
+          <AlmaLogo height={26} />
         </div>
 
         <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
@@ -133,6 +133,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <TooltipContent>{t('settings.appearance')}</TooltipContent>
             </Tooltip>
           </div>
+
+          {appInfo?.version && (
+            <p className="text-center text-[10px] tracking-wide text-sidebar-foreground/40 select-none">
+              v{appInfo.version}
+            </p>
+          )}
         </div>
       </aside>
 
