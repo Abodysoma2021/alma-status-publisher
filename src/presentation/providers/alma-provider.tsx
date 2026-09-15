@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import type { AlmaBridge, AlmaBridgeError } from '@/shared/bridge';
 import type {
   AppEvent,
@@ -53,6 +54,8 @@ interface AlmaContextValue {
   setLocale: (locale: Locale) => Promise<void>;
   setTheme: (theme: SettingsView['theme']) => Promise<void>;
   // actions (all toast errors automatically)
+  registerMenuListener: (action: string, cb: () => void) => () => void;
+  takePendingAction: (action?: string) => string | null;
   actions: {
     startLinking: (name: string, pairingPhone?: string) => Promise<SessionView | null>;
     cancelLinking: (id: string) => Promise<void>;
@@ -211,6 +214,41 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
     };
   }, [t]);
 
+
+  // ---- native menu actions (application menu / dock menu) ----
+  const router = useRouter();
+  const pendingActionRef = React.useRef<string | null>(null);
+  const menuListenersRef = React.useRef(new Map<string, Set<() => void>>());
+
+  const notifyMenuListeners = React.useCallback((action: string) => {
+    for (const cb of menuListenersRef.current.get(action) ?? []) {
+      try {
+        cb();
+      } catch {
+        /* listener isolation */
+      }
+    }
+  }, []);
+
+  const registerMenuListener = React.useCallback((action: string, cb: () => void) => {
+    const set = menuListenersRef.current.get(action) ?? new Set();
+    set.add(cb);
+    menuListenersRef.current.set(action, set);
+    return () => {
+      set.delete(cb);
+    };
+  }, []);
+
+  const takePendingAction = React.useCallback((action?: string) => {
+    const pending = pendingActionRef.current;
+    if (pending && (!action || pending === action)) {
+      pendingActionRef.current = null;
+      return pending;
+    }
+    return null;
+  }, []);
+
+
   // ---- actions ----
   const runCommand = React.useCallback(
     async <T,>(fn: () => Promise<T>): Promise<T | null> => {
@@ -294,6 +332,57 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
     [runCommand],
   );
 
+  React.useEffect(() => {
+    if (!bridgeAvailable()) return;
+    return getBridge().onMenu((action) => {
+      switch (action) {
+        case 'theme:toggle': {
+          const { theme } = settings;
+          const next = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark';
+          void setTheme(next);
+          break;
+        }
+        case 'locale:toggle':
+          void setLocale(settings.locale === 'en' ? 'ar' : 'en');
+          break;
+        case 'nav:dashboard':
+          router.push('/');
+          break;
+        case 'nav:numbers':
+          router.push('/numbers');
+          break;
+        case 'nav:scheduler':
+          router.push('/scheduler');
+          break;
+        case 'nav:history':
+          router.push('/history');
+          break;
+        case 'nav:settings':
+          router.push('/settings');
+          break;
+        case 'schedule:new':
+          pendingActionRef.current = action;
+          router.push('/scheduler');
+          notifyMenuListeners(action);
+          break;
+        case 'numbers:link':
+          pendingActionRef.current = action;
+          router.push('/numbers');
+          notifyMenuListeners(action);
+          break;
+        default:
+          break;
+      }
+    });
+  }, [router, notifyMenuListeners, settings, setTheme, setLocale]);
+
+  // macOS Dock badge: number of connected accounts.
+  React.useEffect(() => {
+    if (!bridgeAvailable()) return;
+    const connected = sessions.filter((s) => s.status === 'connected').length;
+    void getBridge().setDockBadge(connected).catch(() => undefined);
+  }, [sessions]);
+
   const value = React.useMemo<AlmaContextValue>(
     () => ({
       sessions,
@@ -308,10 +397,12 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
       t,
       setLocale,
       setTheme,
+      registerMenuListener,
+      takePendingAction,
       actions,
       refreshAll,
     }),
-    [sessions, schedules, logs, dashboard, settings, appInfo, ready, locale, dir, t, setLocale, setTheme, actions, refreshAll],
+    [sessions, schedules, logs, dashboard, settings, appInfo, ready, locale, dir, t, setLocale, setTheme, registerMenuListener, takePendingAction, actions, refreshAll],
   );
 
   return <AlmaContext.Provider value={value}>{children}</AlmaContext.Provider>;

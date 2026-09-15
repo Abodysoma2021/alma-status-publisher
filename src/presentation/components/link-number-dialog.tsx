@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import QRCode from 'qrcode';
-import { Loader2, QrCode, ScanLine, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Loader2, QrCode, ScanLine, CheckCircle2, RefreshCw, CloudAlert, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAlma } from '../providers/alma-provider';
 import type { SessionView } from '@/shared/view-models';
 
-type Step = 'name' | 'qr' | 'linking' | 'done' | 'expired';
+type Step = 'name' | 'qr' | 'linking' | 'done' | 'expired' | 'failed';
 
 export function LinkNumberDialog({
   open,
@@ -36,6 +36,8 @@ export function LinkNumberDialog({
   const [session, setSession] = React.useState<SessionView | null>(null);
   const [generatedQr, setGeneratedQr] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [restarting, setRestarting] = React.useState(false);
+  const [elapsed, setElapsed] = React.useState(0);
 
   const liveSession = session ? sessions.find((s) => s.id === session.id) : undefined;
 
@@ -50,11 +52,12 @@ export function LinkNumberDialog({
       case 'connecting':
         return 'linking';
       case 'awaiting_qr':
-        return 'qr';
       case 'initializing':
         return 'qr';
       default:
-        return 'linking';
+        // error / disconnected / logged_out / not-yet-seen → visible failure
+        // only after the gateway has had a moment to report progress.
+        return 'failed';
     }
   }, [session, liveSession?.status]);
 
@@ -77,6 +80,17 @@ export function LinkNumberDialog({
     };
   }, [liveSession?.qrCode]);
 
+  // Elapsed timer so the wait is visibly alive, never frozen.
+  const sessionId = session?.id ?? null;
+  React.useEffect(() => {
+    if (!sessionId || step === 'name' || step === 'done') return;
+    const startedAt = Date.now();
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 500);
+    return () => clearInterval(timer);
+  }, [sessionId, step]);
+
+  const mmss = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+
   const reset = React.useCallback(() => {
     if (session && step !== 'done') void actions.cancelLinking(session.id);
     setSession(null);
@@ -85,6 +99,7 @@ export function LinkNumberDialog({
     setUsePairing(false);
     setGeneratedQr(null);
     setSubmitting(false);
+    setRestarting(false);
   }, [actions, session, step]);
 
   const handleClose = (next: boolean) => {
@@ -102,16 +117,36 @@ export function LinkNumberDialog({
 
   const restartQr = async () => {
     if (!session) return;
+    setRestarting(true);
     setGeneratedQr(null);
     await actions.relinkSession(session.id);
+    setRestarting(false);
   };
+
+  const removeAndClose = async () => {
+    if (!session) return;
+    await actions.cancelLinking(session.id);
+    setSession(null);
+    setName('');
+    setGeneratedQr(null);
+    setSubmitting(false);
+    onOpenChange(false);
+  };
+
+  const preparing = step === 'qr' && !qrDataUrl && elapsed < 15;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => step !== 'name' && step !== 'done' && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{t('numbers.link-dialog.title')}</DialogTitle>
-          <DialogDescription>{step === 'name' ? t('numbers.link-dialog.step-name') : t('numbers.link-dialog.step-qr')}</DialogDescription>
+          <DialogDescription>
+            {step === 'name'
+              ? t('numbers.link-dialog.step-name')
+              : step === 'failed'
+                ? t('numbers.link-dialog.step-failed')
+                : t('numbers.link-dialog.step-qr')}
+          </DialogDescription>
         </DialogHeader>
 
         {step === 'name' && (
@@ -169,8 +204,8 @@ export function LinkNumberDialog({
                   <RefreshCw className="size-6" />
                 </div>
                 <p className="text-sm text-muted-foreground">{t('error.QR_EXPIRED')}</p>
-                <Button variant="outline" size="sm" onClick={() => void restartQr()}>
-                  <RefreshCw className="size-4" />
+                <Button variant="outline" size="sm" onClick={() => void restartQr()} disabled={restarting}>
+                  {restarting ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   {t('common.retry')}
                 </Button>
               </div>
@@ -197,7 +232,13 @@ export function LinkNumberDialog({
 
             <div className="text-center text-xs text-muted-foreground">
               <p>{t('numbers.link-dialog.hint')}</p>
-              {step === 'qr' && !qrDataUrl && <p className="mt-1">{t('numbers.link-dialog.waiting')}</p>}
+              <p className="mt-1 tabular-nums">
+                {preparing
+                  ? t('numbers.link-dialog.preparing')
+                  : step === 'qr' && !qrDataUrl
+                    ? t('numbers.link-dialog.waiting')
+                    : mmss}
+              </p>
             </div>
           </div>
         )}
@@ -206,6 +247,36 @@ export function LinkNumberDialog({
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <Loader2 className="size-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">{t('numbers.link-dialog.linking')}</p>
+            <p className="font-mono text-xs text-muted-foreground tabular-nums">{mmss}</p>
+          </div>
+        )}
+
+        {step === 'failed' && liveSession && (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <CloudAlert className="size-7" />
+            </div>
+            <div>
+              <p className="font-semibold">{t('numbers.link-dialog.failed-title')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t(`error.${liveSession.lastError ?? 'UNKNOWN'}`) === `error.${liveSession.lastError ?? 'UNKNOWN'}`
+                  ? t('error.UNKNOWN')
+                  : t(`error.${liveSession.lastError ?? 'UNKNOWN'}`)}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => void restartQr()} disabled={restarting}>
+                {restarting ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                {t('common.retry')}
+              </Button>
+              <Button variant="ghost" onClick={() => void removeAndClose()}>
+                <Trash2 className="size-4" />
+                {t('common.remove')}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('numbers.link-dialog.failed-hint')}
+            </p>
           </div>
         )}
 

@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { formatDateTime, formatRelative } from '@/presentation/lib/format';
+import { useMenuAction } from '@/presentation/hooks/use-menu-action';
 import type { ScheduleView, ContentType } from '@/shared/view-models';
 
 const CONTENT_ICON: Record<ContentType, string> = {
@@ -46,6 +47,9 @@ export default function SchedulerPage() {
     setEditing(undefined);
     setDialogOpen(true);
   };
+
+  // Native menu: File → New Scheduled Status (⌘N) / Dock menu.
+  useMenuAction('schedule:new', openCreate);
 
   const openEdit = (schedule: ScheduleView) => {
     setEditing(schedule);

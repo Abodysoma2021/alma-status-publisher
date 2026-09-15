@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatRelative } from '@/presentation/lib/format';
+import { useMenuAction } from '@/presentation/hooks/use-menu-action';
 
 function greetingKey(hour: number): string {
   if (hour < 12) return 'dashboard.greeting.morning';
@@ -22,6 +23,9 @@ export default function DashboardPage() {
   const { t, locale, dashboard, sessions, ready } = useAlma();
   const [linkOpen, setLinkOpen] = React.useState(false);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
+
+  useMenuAction('schedule:new', () => setScheduleOpen(true));
+  useMenuAction('numbers:link', () => setLinkOpen(true));
 
   const stats = [
     {

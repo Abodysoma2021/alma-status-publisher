@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { SessionView } from '@/shared/view-models';
+import { useMenuAction } from '@/presentation/hooks/use-menu-action';
 
 type ConfirmAction = 'remove' | 'unlink' | null;
 
@@ -48,6 +49,9 @@ export default function NumbersPage() {
   const [renaming, setRenaming] = React.useState<SessionView | null>(null);
   const [renameValue, setRenameValue] = React.useState('');
   const [confirmTarget, setConfirmTarget] = React.useState<{ session: SessionView; action: ConfirmAction } | null>(null);
+
+  // Native menu: File → Link a Number… (⌘L) / Dock menu.
+  useMenuAction('numbers:link', () => setLinkOpen(true));
 
   const openRename = (session: SessionView) => {
     setRenaming(session);

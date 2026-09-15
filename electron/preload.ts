@@ -74,6 +74,7 @@ const commands: AlmaBridgeCommands = {
   updateSettings: (patch) => invoke('alma:settings:update', patch),
   openDataFolder: () => invoke('alma:app:open-data-folder'),
   getAppInfo: () => invoke('alma:app:info'),
+  setDockBadge: (count: number) => invoke('alma:app:dock-badge', count),
 };
 
 contextBridge.exposeInMainWorld('alma', {
@@ -82,6 +83,11 @@ contextBridge.exposeInMainWorld('alma', {
     const wrapped = (_event: unknown, payload: unknown) => listener(payload as never);
     ipcRenderer.on('alma:event', wrapped);
     return () => ipcRenderer.removeListener('alma:event', wrapped);
+  },
+  onMenu: (listener: (action: string) => void) => {
+    const wrapped = (_event: unknown, action: string) => listener(action);
+    ipcRenderer.on('alma:menu', wrapped);
+    return () => ipcRenderer.removeListener('alma:menu', wrapped);
   },
   getPathForFile: (file: File) => {
     try {

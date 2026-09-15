@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { initContainer } from './bootstrap';
 import { registerIpcHandlers, pushEventToWindow } from './ipc';
+import { installNativeMenu, installContextMenu, updateDockBadge } from './menus';
 import type { AppContainer } from './bootstrap';
 
 const IS_DEV = process.env.ALMA_DEV === '1';
@@ -43,7 +44,7 @@ function createWindow(): Promise<void> {
       backgroundColor: settings.theme === 'light' ? '#F7F8FA' : '#0B1220',
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
       trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 18 } : undefined,
-      autoHideMenuBar: true,
+      autoHideMenuBar: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.cjs'),
         contextIsolation: true,
@@ -59,6 +60,7 @@ function createWindow(): Promise<void> {
       return { action: 'deny' };
     });
 
+    installContextMenu(() => mainWindow);
     mainWindow.once('ready-to-show', () => mainWindow?.show());
     mainWindow.on('closed', () => {
       mainWindow = null;
@@ -122,8 +124,23 @@ app.whenReady().then(async () => {
       { version: app.getVersion(), platform: process.platform },
     );
 
+    installNativeMenu({
+      getWindow: () => mainWindow,
+      sendAction: (action) => pushEventToWindow(mainWindow, 'alma:menu', action),
+      dataDir: container.paths.dataDir,
+    });
+
     await createWindow();
     await container.startBackgroundWork();
+
+    // Reflect connected numbers on the Dock icon as they change.
+    container.events.subscribeAll((type) => {
+      if (type === 'session-updated') {
+        void container!.sessions.list().then((sessions) => {
+          updateDockBadge(sessions.filter((s) => s.status === 'connected').length);
+        }).catch(() => undefined);
+      }
+    });
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) void createWindow();

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { ipcMain, dialog, nativeTheme, BrowserWindow } from 'electron';
 import * as path from 'node:path';
 import type { AppContainer } from './bootstrap';
 import { AppError } from '../src/core/domain/errors';
@@ -247,7 +247,18 @@ export function registerIpcHandlers(
   );
 
   ipcMain.handle('alma:settings:update', (_e, patch: { theme?: 'light' | 'dark' | 'system'; locale?: 'en' | 'ar' }) =>
-    guard(() => container.useCases.updateSettings.execute(patch)),
+    guard(async () => {
+      // Keep native chrome (scrollbars, dialogs) in sync with the app theme.
+      if (patch.theme) nativeTheme.themeSource = patch.theme;
+      return container.useCases.updateSettings.execute(patch);
+    }),
+  );
+
+  ipcMain.handle('alma:app:dock-badge', (_e, count: number) =>
+    guard(async () => {
+      const { updateDockBadge } = await import('./menus');
+      updateDockBadge(Number(count) || 0);
+    }),
   );
 
   ipcMain.handle('alma:app:info', () =>

@@ -51,6 +51,7 @@ export interface AlmaBridgeCommands {
   updateSettings(patch: Partial<SettingsView>): Promise<SettingsView>;
   openDataFolder(): Promise<void>;
   getAppInfo(): Promise<{ version: string; platform: string; dataPath: string; mediaBaseUrl: string }>;
+  setDockBadge(count: number): Promise<void>;
 }
 
 export interface CreateScheduleInput {
@@ -72,6 +73,10 @@ export type UpdateScheduleInput = Partial<CreateScheduleInput>;
 export interface AlmaBridge {
   commands: AlmaBridgeCommands;
   onEvent(listener: (event: AppEvent) => void): () => void;
+  /** Native application-menu / dock-menu actions forwarded from main. */
+  onMenu(listener: (action: string) => void): () => void;
+  /** macOS Dock icon badge with the connected-numbers count. */
+  setDockBadge(count: number): Promise<void>;
   getPathForFile(file: File): string | null;
 }
 
