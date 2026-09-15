@@ -1,0 +1,59 @@
+appId: com.alma.status-publisher
+productName: Alma Status Publisher
+copyright: Copyright © 2026 Alma
+
+directories:
+  output: release
+  buildResources: build
+
+# Renderer bundle + electron main process. Production dependencies are
+# included automatically by electron-builder.
+files:
+  - out/**
+  - dist-electron/**
+  - package.json
+  - "!**/*.map"
+
+# open-wa / puppeteer spawn external Chromium binaries and read loose files —
+# keep them unpacked outside the asar archive.
+asar: true
+asarUnpack:
+  - node_modules/@open-wa/**
+  - node_modules/puppeteer/**
+  - node_modules/puppeteer-core/**
+  - node_modules/@puppeteer/**
+  - node_modules/spinnies/**
+
+mac:
+  category: public.app-category.social-networking
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSCameraUsageDescription: Not used.
+    NSMicrophoneUsageDescription: Not used.
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+  publisherName: Alma
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Alma Status Publisher
+
+npmRebuild: false
+buildDependenciesFromSource: false
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

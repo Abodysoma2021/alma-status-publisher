@@ -1,0 +1,239 @@
+'use client';
+
+import * as React from 'react';
+import QRCode from 'qrcode';
+import { Loader2, QrCode, ScanLine, CheckCircle2, RefreshCw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { useAlma } from '../providers/alma-provider';
+import type { SessionView } from '@/shared/view-models';
+
+type Step = 'name' | 'qr' | 'linking' | 'done' | 'expired';
+
+export function LinkNumberDialog({
+  open,
+  onOpenChange,
+  onLinked,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onLinked?: () => void;
+}) {
+  const { t, sessions, actions } = useAlma();
+  const [name, setName] = React.useState('');
+  const [pairingPhone, setPairingPhone] = React.useState('');
+  const [usePairing, setUsePairing] = React.useState(false);
+  const [session, setSession] = React.useState<SessionView | null>(null);
+  const [generatedQr, setGeneratedQr] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const liveSession = session ? sessions.find((s) => s.id === session.id) : undefined;
+
+  // Derive the visible step from the live session lifecycle — no sync effects.
+  const step: Step = React.useMemo(() => {
+    if (!session) return 'name';
+    switch (liveSession?.status) {
+      case 'connected':
+        return 'done';
+      case 'qr_expired':
+        return 'expired';
+      case 'connecting':
+        return 'linking';
+      case 'awaiting_qr':
+        return 'qr';
+      case 'initializing':
+        return 'qr';
+      default:
+        return 'linking';
+    }
+  }, [session, liveSession?.status]);
+
+  const qrDataUrl = liveSession?.qrCode ? generatedQr : null;
+
+  // Render the QR string into a data URL (async external system).
+  React.useEffect(() => {
+    const qr = liveSession?.qrCode;
+    if (!qr) return;
+    let cancelled = false;
+    void QRCode.toDataURL(qr, {
+      width: 260,
+      margin: 1,
+      color: { dark: '#0b1220', light: '#ffffff' },
+    }).then((url) => {
+      if (!cancelled) setGeneratedQr(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveSession?.qrCode]);
+
+  const reset = React.useCallback(() => {
+    if (session && step !== 'done') void actions.cancelLinking(session.id);
+    setSession(null);
+    setName('');
+    setPairingPhone('');
+    setUsePairing(false);
+    setGeneratedQr(null);
+    setSubmitting(false);
+  }, [actions, session, step]);
+
+  const handleClose = (next: boolean) => {
+    if (!next) reset();
+    onOpenChange(next);
+  };
+
+  const submit = async () => {
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
+    const created = await actions.startLinking(name, usePairing && pairingPhone ? pairingPhone : undefined);
+    if (created) setSession(created);
+    else setSubmitting(false);
+  };
+
+  const restartQr = async () => {
+    if (!session) return;
+    setGeneratedQr(null);
+    await actions.relinkSession(session.id);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => step !== 'name' && step !== 'done' && e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>{t('numbers.link-dialog.title')}</DialogTitle>
+          <DialogDescription>{step === 'name' ? t('numbers.link-dialog.step-name') : t('numbers.link-dialog.step-qr')}</DialogDescription>
+        </DialogHeader>
+
+        {step === 'name' && (
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="session-name">{t('common.name')}</Label>
+              <Input
+                id="session-name"
+                autoFocus
+                value={name}
+                placeholder={t('numbers.link-dialog.name-placeholder')}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void submit()}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={() => setUsePairing((v) => !v)}
+                className="text-start text-sm text-muted-foreground underline-offset-2 hover:underline"
+              >
+                {usePairing ? '− ' : '+ '}
+                {t('numbers.link-dialog.or-pair')}
+              </button>
+              {usePairing && (
+                <Input
+                  dir="ltr"
+                  value={pairingPhone}
+                  placeholder={t('numbers.link-dialog.phone-placeholder')}
+                  onChange={(e) => setPairingPhone(e.target.value)}
+                />
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => handleClose(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={() => void submit()} disabled={!name.trim() || submitting}>
+                {submitting && <Loader2 className="size-4 animate-spin" />}
+                {t('common.confirm')}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {(step === 'qr' || step === 'expired') && liveSession && (
+          <div className="flex flex-col items-center gap-4 py-2">
+            {step === 'expired' ? (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="flex size-14 items-center justify-center rounded-full bg-orange-500/10 text-orange-500">
+                  <RefreshCw className="size-6" />
+                </div>
+                <p className="text-sm text-muted-foreground">{t('error.QR_EXPIRED')}</p>
+                <Button variant="outline" size="sm" onClick={() => void restartQr()}>
+                  <RefreshCw className="size-4" />
+                  {t('common.retry')}
+                </Button>
+              </div>
+            ) : qrDataUrl ? (
+              <div className="relative rounded-2xl bg-white p-3 shadow-sm ring-1 ring-border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt="WhatsApp QR" width={236} height={236} className="rounded-lg" />
+                <ScanLine className="absolute end-3 top-3 size-5 text-primary/40" />
+              </div>
+            ) : (
+              <div className="flex size-[260px] items-center justify-center rounded-2xl border border-dashed">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {liveSession.pairingCode && (
+              <div className="rounded-xl bg-primary/10 px-4 py-2 text-center">
+                <p className="text-xs text-muted-foreground">{t('numbers.link-dialog.pairing-code')}</p>
+                <p dir="ltr" className="font-mono text-2xl font-bold tracking-[0.35em] text-primary">
+                  {liveSession.pairingCode}
+                </p>
+              </div>
+            )}
+
+            <div className="text-center text-xs text-muted-foreground">
+              <p>{t('numbers.link-dialog.hint')}</p>
+              {step === 'qr' && !qrDataUrl && <p className="mt-1">{t('numbers.link-dialog.waiting')}</p>}
+            </div>
+          </div>
+        )}
+
+        {step === 'linking' && (
+          <div className="flex flex-col items-center gap-4 py-10 text-center">
+            <Loader2 className="size-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">{t('numbers.link-dialog.linking')}</p>
+          </div>
+        )}
+
+        {step === 'done' && (
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <CheckCircle2 className="size-12 text-emerald-500" />
+            <p className="font-semibold">{t('numbers.link-dialog.success')}</p>
+            {liveSession?.phoneNumber && (
+              <p dir="ltr" className="font-mono text-sm text-muted-foreground">
+                {liveSession.phoneNumber}
+              </p>
+            )}
+            <Button
+              onClick={() => {
+                onLinked?.();
+                setSession(null);
+                setName('');
+                setGeneratedQr(null);
+                setSubmitting(false);
+                onOpenChange(false);
+              }}
+            >
+              <QrCode className="size-4" />
+              {t('numbers.link-new')}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

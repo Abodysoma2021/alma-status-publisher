@@ -1,26 +1,63 @@
 {
   "name": "alma-status-publisher",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "node scripts/dev.mjs",
+    "dev:next": "next dev -p 3000",
+    "build": "next build && node scripts/build-electron.mjs",
+    "build:renderer": "next build",
+    "build:electron": "node scripts/build-electron.mjs",
+    "typecheck:web": "tsc --noEmit",
+    "typecheck:electron": "tsc -p tsconfig.electron.json --noEmit",
+    "typecheck": "npm run typecheck:web && npm run typecheck:electron",
+    "lint": "eslint src electron scripts --ext .ts,.tsx,.mjs || true",
+    "dist": "npm run build && electron-builder -mwl --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "start": "electron dist-electron/main.cjs"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@hugeicons/core-free-icons": "^4.3.3",
+    "@hugeicons/react": "^1.1.10",
+    "@open-wa/wa-automate": "^4.76.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.3.0",
+    "lucide-react": "^1.46.0",
     "next": "16.3.5",
+    "next-themes": "^0.4.6",
+    "qrcode": "^1.5.4",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hook-form": "^7.88.0",
+    "shadcn": "^4.21.0",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "typescript": "^5",
+    "wait-on": "^9.1.0"
+  },
+  "productName": "Alma Status Publisher",
+  "description": "Schedule WhatsApp status updates across multiple linked numbers \u2014 Windows & macOS desktop app.",
+  "author": "Abodysoma2021",
+  "license": "MIT",
+  "main": "dist-electron/main.cjs"
 }

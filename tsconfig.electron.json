@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "lib": ["ES2023", "DOM"],
+    "noEmit": true
+  },
+  "include": ["electron/**/*.ts", "src/shared/**/*.ts", "src/core/**/*.ts", "src/infrastructure/**/*.ts"],
+  "exclude": ["node_modules", "dist-electron"]
+}

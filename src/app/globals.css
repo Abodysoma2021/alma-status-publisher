@@ -1,1 +1,276 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ */
+/* IBM Plex Sans Arabic — bundled locally (arabic + latin subsets)     */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-arabic-300.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-arabic-400.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-arabic-500.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-arabic-600.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-arabic-700.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-latin-300.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-latin-500.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-latin-600.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/IBMPlexSansArabic-latin-700.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ------------------------------------------------------------------ */
+/* Design tokens — Alma brand                                         */
+/* Identity: deep-ink navy surfaces, confident teal primary,          */
+/* subtle teal→indigo brand gradient. White logo lives on brand ink.  */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #f6f8fa;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  --primary: #0d9488;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f6;
+  --secondary-foreground: #1d2939;
+  --muted: #eef2f6;
+  --muted-foreground: #5b6472;
+  --accent: #e8f5f3;
+  --accent-foreground: #0f766e;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e4e8ee;
+  --input: #dde2ea;
+  --ring: #14b8a6;
+
+  --chart-1: #0d9488;
+  --chart-2: #4f46e5;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #64748b;
+
+  --sidebar: #0b1220;
+  --sidebar-foreground: #cdd5e0;
+  --sidebar-primary: #14b8a6;
+  --sidebar-primary-foreground: #06201d;
+  --sidebar-accent: #141e33;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #1c2740;
+  --sidebar-ring: #14b8a6;
+
+  --brand-gradient: linear-gradient(135deg, #0d9488 0%, #0e7490 55%, #4f46e5 130%);
+  --brand-ink: #0b1220;
+}
+
+.dark {
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --card: #111a2c;
+  --card-foreground: #e2e8f0;
+  --popover: #101828;
+  --popover-foreground: #e2e8f0;
+  --primary: #14b8a6;
+  --primary-foreground: #04201c;
+  --secondary: #1a2438;
+  --secondary-foreground: #cbd5e1;
+  --muted: #17202f;
+  --muted-foreground: #8a94a6;
+  --accent: #122d33;
+  --accent-foreground: #5eead4;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1d2941;
+  --input: #243049;
+  --ring: #2dd4bf;
+
+  --chart-1: #2dd4bf;
+  --chart-2: #818cf8;
+  --chart-3: #fbbf24;
+  --chart-4: #34d399;
+  --chart-5: #94a3b8;
+
+  --sidebar: #080e1a;
+  --sidebar-foreground: #c3ccda;
+  --sidebar-primary: #14b8a6;
+  --sidebar-primary-foreground: #04201c;
+  --sidebar-accent: #101a2e;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #16213a;
+  --sidebar-ring: #2dd4bf;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+}
+
+@layer utilities {
+  .brand-gradient {
+    background-image: var(--brand-gradient);
+  }
+
+  .brand-gradient-text {
+    background-image: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Electron draggable titlebar region */
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  .scrollbar-subtle {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+    border-radius: 8px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

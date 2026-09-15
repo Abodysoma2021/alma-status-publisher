@@ -1,14 +1,7 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
 # testing
 /coverage
@@ -17,12 +10,16 @@
 /.next/
 /out/
 
-# production
-/build
+# electron
+/dist-electron/
+/release/
+
+# NOTE: /build is NOT ignored — it holds the app icons (icon.icns, icon.ico, icon.png)
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,12 +27,22 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
+# env files
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# open-wa session data (never commit WhatsApp credentials)
+*.data.json
+**.node-persist**
+**_IGNORE_**
+wa-sessions/
+
+# logs
+*.log
+CLAUDE.md
+AGENTS.md
