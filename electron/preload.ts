@@ -33,9 +33,11 @@ function reviveError(err: unknown): Error & { code?: string; messageKey?: string
 }
 
 function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+  console.log(`[alma:ipc-call] ${channel}`);
   return ipcRenderer
     .invoke(channel, ...args)
     .catch((err) => {
+      console.error(`[alma:ipc-call] ${channel} rejected`, err);
       throw reviveError(err);
     });
 }

@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   reactStrictMode: true,
   devIndicators: false,
+  // Electron loads the renderer from http://127.0.0.1:<port> — without this,
+  // Next 16 blocks dev resources (HMR/RSC) as cross-origin and hydration
+  // silently never runs (UI renders but nothing responds).
+  allowedDevOrigins: ["127.0.0.1"],
 };
 
 export default nextConfig;

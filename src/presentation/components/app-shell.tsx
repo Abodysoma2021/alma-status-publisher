@@ -91,7 +91,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => void setLocale(locale === 'en' ? 'ar' : 'en')}
+                  aria-label="Toggle language"
+                  onClick={() => {
+                    console.log('[alma:ui] language toggle clicked, current =', locale);
+                    void setLocale(locale === 'en' ? 'ar' : 'en');
+                  }}
                   className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md bg-sidebar-accent/70 text-xs text-sidebar-foreground/90 transition hover:bg-sidebar-accent"
                 >
                   <Languages className="size-3.5" />
@@ -104,15 +108,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() =>
+                  aria-label="Toggle appearance"
+                  onClick={() => {
+                    console.log('[alma:ui] theme toggle clicked, current =', settings.theme);
                     void setTheme(
                       settings.theme === 'dark'
                         ? 'light'
                         : settings.theme === 'light'
                           ? 'system'
                           : 'dark',
-                    )
-                  }
+                    );
+                  }}
                   className="flex h-8 items-center justify-center gap-1.5 rounded-md bg-sidebar-accent/70 px-2.5 text-sidebar-foreground/90 transition hover:bg-sidebar-accent"
                 >
                   {settings.theme === 'dark' ? (

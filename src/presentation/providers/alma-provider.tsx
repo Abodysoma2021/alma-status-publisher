@@ -102,8 +102,20 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
     [locale],
   );
 
+  // ---- hydration & click tracing (debug) ----
+  React.useEffect(() => {
+    console.log('[alma:trace] provider mounted, bridge =', bridgeAvailable());
+    const onClick = (e: MouseEvent) => {
+      const el = e.target as HTMLElement | null;
+      console.log('[alma:click]', el?.tagName, el?.getAttribute('aria-label') ?? el?.textContent?.slice(0, 30) ?? '');
+    };
+    window.addEventListener('click', onClick, true);
+    return () => window.removeEventListener('click', onClick, true);
+  }, []);
+
   // ---- initial load ----
   React.useEffect(() => {
+    console.log('[alma:trace] initial-load effect, bridge =', bridgeAvailable());
     if (!bridgeAvailable()) {
       console.error('[alma] bridge UNAVAILABLE — window.alma is missing. UI commands will not work.');
       setBridgeMissing(true);
@@ -130,6 +142,7 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
         setDashboard(d);
         setSettings(set);
         setAppInfo(info);
+        console.log('[alma:trace] initial load complete: sessions =', s.length, 'schedules =', sch.length);
       } catch (err) {
         reportError(err);
       } finally {

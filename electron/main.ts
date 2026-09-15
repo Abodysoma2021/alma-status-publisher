@@ -81,6 +81,7 @@ function createWindow(): Promise<void> {
     mainWindow.webContents.on('did-finish-load', () => {
       rendererHealthy = true;
       rendererRetries = 0;
+      if (IS_DEV) void runDoctor();
     });
 
     mainWindow.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
@@ -126,6 +127,32 @@ function loadRenderer(): Promise<void> {
       logCrash('loadURL', err);
       debugLog('renderer', `loadURL rejected: ${err instanceof Error ? err.message : String(err)}`);
     });
+}
+
+/**
+ * Dev-only self-test: waits for hydration, reports bridge/react state, then
+ * simulates a real click on the theme toggle to prove the full IPC loop.
+ */
+async function runDoctor(): Promise<void> {
+  if (!mainWindow) return;
+  await new Promise((r) => setTimeout(r, 4000));
+  try {
+    const diag = (await mainWindow.webContents.executeJavaScript(
+      `({ alma: typeof window.alma,
+         buttons: document.querySelectorAll('button').length,
+         readyState: document.readyState,
+         hydrated: !!document.querySelector('[data-alma-hydrated]') })`,
+    )) as { alma: string; buttons: number; readyState: string; hydrated: boolean };
+    debugLog('doctor', `state: ${JSON.stringify(diag)}`);
+
+    await mainWindow.webContents.executeJavaScript(
+      `const b = document.querySelector('button[aria-label="Toggle appearance"]');
+       if (b) { b.click(); 'clicked'; } else { 'toggle-button-not-found'; }`,
+    );
+    debugLog('doctor', 'simulated click on theme toggle — expect an alma:ipc line next');
+  } catch (err) {
+    debugLog('doctor', `failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 function mapEventType(type: string): string {
