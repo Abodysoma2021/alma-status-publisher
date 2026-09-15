@@ -18,8 +18,9 @@ async function emitSessionChanged(deps: SessionUseCaseDeps, id: string) {
 export class ListSessions {
   constructor(private deps: SessionUseCaseDeps) {}
   async execute(): Promise<WhatsAppSession[]> {
-    const sessions = await this.deps.sessions.list();
-    return sessions.map((s) => ({ ...s, qrCode: undefined, pairingCode: undefined }));
+    // qrCode/pairingCode are part of the live view — the linking dialog
+    // renders the QR straight from this list.
+    return this.deps.sessions.list();
   }
 }
 

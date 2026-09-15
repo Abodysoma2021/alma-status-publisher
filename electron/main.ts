@@ -190,7 +190,10 @@ async function linkingSelfTest(container: AppContainer): Promise<void> {
         debugLog('doctor', `link state → ${state}`);
       }
       if (s.status === 'awaiting_qr' && s.qrCode) {
-        debugLog('doctor', '✅ QR RECEIVED — full pipeline (browser → WA → ev → gateway → repo) works');
+        debugLog('doctor', `✅ QR RECEIVED (${s.qrCode.length} chars) at repo level`);
+        const viaIpc = await container.useCases.listSessions.execute();
+        const viaIpcQr = viaIpc.find((v) => v.id === session.id)?.qrCode;
+        debugLog('doctor', viaIpcQr ? `✅ QR also visible through listSessions (${viaIpcQr.length} chars) — UI will render it` : '❌ QR missing through listSessions — UI cannot show it!');
         break;
       }
       if (s.status === 'connected') {
