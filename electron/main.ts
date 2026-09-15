@@ -153,6 +153,59 @@ async function runDoctor(): Promise<void> {
   } catch (err) {
     debugLog('doctor', `failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  if (process.env.ALMA_DOCTOR_LINK === '1' && container) {
+    await linkingSelfTest(container);
+  }
+}
+
+/**
+ * Dev-only: drives a real linking session end-to-end (browser launch → WA
+ * Web → QR event → gateway → session state) WITHOUT scanning, then cleans up.
+ * Proves the QR pipeline independent of the UI.
+ */
+async function linkingSelfTest(container: AppContainer): Promise<void> {
+  debugLog('doctor', '=== LINKING SELF-TEST START ===');
+  let session;
+  try {
+    session = await container.useCases.startLinking.execute({ name: `Doctor ${Date.now()}` });
+  } catch (err) {
+    debugLog('doctor', `startLinking threw: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
+
+  const deadline = Date.now() + 150_000;
+  let last = '';
+  try {
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const s = await container.sessions.get(session.id);
+      if (!s) {
+        debugLog('doctor', 'session vanished (removed)');
+        return;
+      }
+      const state = `${s.status} qr:${s.qrCode ? s.qrCode.length : 0}ch pair:${s.pairingCode ?? '-'} err:${s.lastError ?? '-'}`;
+      if (state !== last) {
+        last = state;
+        debugLog('doctor', `link state → ${state}`);
+      }
+      if (s.status === 'awaiting_qr' && s.qrCode) {
+        debugLog('doctor', '✅ QR RECEIVED — full pipeline (browser → WA → ev → gateway → repo) works');
+        break;
+      }
+      if (s.status === 'connected') {
+        debugLog('doctor', '✅ SESSION CONNECTED (unexpected without scan, even better)');
+        break;
+      }
+      if (['qr_expired', 'logged_out', 'error'].includes(s.status)) {
+        debugLog('doctor', `❌ linking failed with status=${s.status}`);
+        break;
+      }
+    }
+  } finally {
+    await container.useCases.cancelLinking.execute(session.id).catch(() => undefined);
+    debugLog('doctor', '=== LINKING SELF-TEST DONE (session cleaned up) ===');
+  }
 }
 
 function mapEventType(type: string): string {
@@ -191,6 +244,7 @@ app.whenReady().then(async () => {
     debugLog('boot', `mode: ${IS_DEV ? 'dev' : 'production'} | electron ${process.versions.electron}`);
     container = initContainer({ rendererRootDir: rendererRootDir() });
     debugLog('boot', `renderer root: ${rendererRootDir()}`);
+    container.gateway.dispatchDebug = (message) => debugLog('wa', message);
 
     // Always start the internal server: serves /media/* previews in dev,
     // and the exported renderer bundle in production.

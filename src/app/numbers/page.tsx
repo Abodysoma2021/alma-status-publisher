@@ -7,10 +7,10 @@ import {
   MoreHorizontal,
   Star,
   Pencil,
-  Link2,
   Unplug,
   Trash2,
   RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import { AppShell, PageHeader } from '@/presentation/components/app-shell';
 import { EmptyState } from '@/presentation/components/empty-state';
@@ -46,12 +46,23 @@ type ConfirmAction = 'remove' | 'unlink' | null;
 export default function NumbersPage() {
   const { t, sessions, ready, actions } = useAlma();
   const [linkOpen, setLinkOpen] = React.useState(false);
+  const [qrSession, setQrSession] = React.useState<SessionView | null>(null);
+  const [qrOpen, setQrOpen] = React.useState(false);
   const [renaming, setRenaming] = React.useState<SessionView | null>(null);
   const [renameValue, setRenameValue] = React.useState('');
   const [confirmTarget, setConfirmTarget] = React.useState<{ session: SessionView; action: ConfirmAction } | null>(null);
 
   // Native menu: File → Link a Number… (⌘L) / Dock menu.
   useMenuAction('numbers:link', () => setLinkOpen(true));
+
+  const showQr = (session: SessionView) => {
+    setQrSession(session);
+    setQrOpen(true);
+  };
+  useMenuAction('numbers:show-qr', () => {
+    const target = sessions.find((s) => ['initializing', 'awaiting_qr', 'connecting', 'qr_expired', 'disconnected', 'error', 'logged_out'].includes(s.status));
+    if (target) showQr(target);
+  });
 
   const openRename = (session: SessionView) => {
     setRenaming(session);
@@ -102,6 +113,7 @@ export default function NumbersPage() {
               <SessionCard
                 key={session.id}
                 session={session}
+                onShowQr={() => showQr(session)}
                 onRename={() => openRename(session)}
                 onRelink={() => void actions.relinkSession(session.id)}
                 onUnlink={() => setConfirmTarget({ session, action: 'unlink' })}
@@ -114,6 +126,9 @@ export default function NumbersPage() {
       </div>
 
       <LinkNumberDialog open={linkOpen} onOpenChange={setLinkOpen} />
+      {qrOpen && qrSession && (
+        <LinkNumberDialog open session={qrSession} onOpenChange={(next) => { if (!next) setQrSession(null); setQrOpen(next); }} />
+      )}
 
       {/* rename dialog */}
       <AlertDialog open={!!renaming} onOpenChange={(open) => !open && setRenaming(null)}>
@@ -174,6 +189,7 @@ export default function NumbersPage() {
 
 function SessionCard({
   session,
+  onShowQr,
   onRename,
   onRelink,
   onUnlink,
@@ -181,6 +197,7 @@ function SessionCard({
   onSetDefault,
 }: {
   session: SessionView;
+  onShowQr: () => void;
   onRename: () => void;
   onRelink: () => void;
   onUnlink: () => void;
@@ -210,8 +227,20 @@ function SessionCard({
                 {session.phoneNumber}
               </p>
             )}
-            <div className="mt-2">
+            <div className="mt-2 flex items-center gap-2">
               <SessionStatusBadge status={session.status} />
+              {['initializing', 'awaiting_qr', 'connecting'].includes(session.status) && (
+                <Button size="sm" variant="secondary" className="h-7 rounded-full px-3 text-xs" onClick={onShowQr}>
+                  <QrCode className="size-3.5" />
+                  {t('numbers.show-qr')}
+                </Button>
+              )}
+              {['qr_expired', 'disconnected', 'logged_out', 'error'].includes(session.status) && (
+                <Button size="sm" variant="secondary" className="h-7 rounded-full px-3 text-xs" onClick={onRelink}>
+                  <RefreshCw className="size-3.5" />
+                  {t('numbers.relink')}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -247,8 +276,8 @@ function SessionCard({
             )}
             {!linked && !linking && (
               <DropdownMenuItem onClick={onRelink}>
-                <Link2 className="size-4" />
-                {t('common.unlink')} → {t('nav.numbers')}
+                <QrCode className="size-4" />
+                {t('numbers.show-qr')}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />

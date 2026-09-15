@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import QRCode from 'qrcode';
-import { Loader2, QrCode, ScanLine, CheckCircle2, RefreshCw, CloudAlert, Trash2 } from 'lucide-react';
+import { Loader2, QrCode, ScanLine, CheckCircle2, RefreshCw, CloudAlert, Trash2, Copy, Unplug } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,34 +16,47 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAlma } from '../providers/alma-provider';
+import { toast } from 'sonner';
 import type { SessionView } from '@/shared/view-models';
 
 type Step = 'name' | 'qr' | 'linking' | 'done' | 'expired' | 'failed';
 
+/**
+ * The linking dialog covers EVERY scenario:
+ *  - new number: name → live QR (or pairing code) → connected
+ *  - existing number mid-linking: live QR / connecting
+ *  - existing number in a bad state (expired, logged out, error): reason + retry
+ *  - already connected: success + phone
+ */
 export function LinkNumberDialog({
   open,
   onOpenChange,
+  session: providedSession,
   onLinked,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Existing session to follow (Show QR / Relink flows). */
+  session?: SessionView | null;
   onLinked?: () => void;
 }) {
   const { t, sessions, actions } = useAlma();
   const [name, setName] = React.useState('');
   const [pairingPhone, setPairingPhone] = React.useState('');
   const [usePairing, setUsePairing] = React.useState(false);
-  const [session, setSession] = React.useState<SessionView | null>(null);
+  const [createdSession, setCreatedSession] = React.useState<SessionView | null>(null);
   const [generatedQr, setGeneratedQr] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [restarting, setRestarting] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(0);
 
-  const liveSession = session ? sessions.find((s) => s.id === session.id) : undefined;
+  const isExisting = !!providedSession;
+  const activeSession = providedSession ?? createdSession;
+  const liveSession = activeSession ? sessions.find((s) => s.id === activeSession.id) : undefined;
 
   // Derive the visible step from the live session lifecycle — no sync effects.
   const step: Step = React.useMemo(() => {
-    if (!session) return 'name';
+    if (!activeSession) return 'name';
     switch (liveSession?.status) {
       case 'connected':
         return 'done';
@@ -55,11 +68,10 @@ export function LinkNumberDialog({
       case 'initializing':
         return 'qr';
       default:
-        // error / disconnected / logged_out / not-yet-seen → visible failure
-        // only after the gateway has had a moment to report progress.
+        // error / logged_out / disconnected / not yet seen → visible failure
         return 'failed';
     }
-  }, [session, liveSession?.status]);
+  }, [activeSession, liveSession?.status]);
 
   const qrDataUrl = liveSession?.qrCode ? generatedQr : null;
 
@@ -81,7 +93,7 @@ export function LinkNumberDialog({
   }, [liveSession?.qrCode]);
 
   // Elapsed timer so the wait is visibly alive, never frozen.
-  const sessionId = session?.id ?? null;
+  const sessionId = activeSession?.id ?? null;
   React.useEffect(() => {
     if (!sessionId || step === 'name' || step === 'done') return;
     const startedAt = Date.now();
@@ -92,15 +104,17 @@ export function LinkNumberDialog({
   const mmss = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
 
   const reset = React.useCallback(() => {
-    if (session && step !== 'done') void actions.cancelLinking(session.id);
-    setSession(null);
+    // A freshly-created session that is abandoned mid-linking gets cleaned up;
+    // an existing session passed via props is never touched on close.
+    if (!isExisting && createdSession && step !== 'done') void actions.cancelLinking(createdSession.id);
+    setCreatedSession(null);
     setName('');
     setPairingPhone('');
     setUsePairing(false);
     setGeneratedQr(null);
     setSubmitting(false);
     setRestarting(false);
-  }, [actions, session, step]);
+  }, [actions, isExisting, createdSession, step]);
 
   const handleClose = (next: boolean) => {
     if (!next) reset();
@@ -111,41 +125,53 @@ export function LinkNumberDialog({
     if (!name.trim() || submitting) return;
     setSubmitting(true);
     const created = await actions.startLinking(name, usePairing && pairingPhone ? pairingPhone : undefined);
-    if (created) setSession(created);
+    if (created) setCreatedSession(created);
     else setSubmitting(false);
   };
 
   const restartQr = async () => {
-    if (!session) return;
+    if (!activeSession) return;
     setRestarting(true);
     setGeneratedQr(null);
-    await actions.relinkSession(session.id);
+    await actions.relinkSession(activeSession.id);
     setRestarting(false);
   };
 
   const removeAndClose = async () => {
-    if (!session) return;
-    await actions.cancelLinking(session.id);
-    setSession(null);
+    if (!activeSession) return;
+    if (isExisting) await actions.removeSession(activeSession.id);
+    else await actions.cancelLinking(activeSession.id);
+    setCreatedSession(null);
     setName('');
     setGeneratedQr(null);
     setSubmitting(false);
     onOpenChange(false);
   };
 
-  const preparing = step === 'qr' && !qrDataUrl && elapsed < 15;
+  const copyPairing = () => {
+    if (liveSession?.pairingCode) {
+      void navigator.clipboard.writeText(liveSession.pairingCode);
+      toast.success(t('common.copy') === 'common.copy' ? 'Copied' : t('common.copied'));
+    }
+  };
+
+  const preparing = step === 'qr' && !qrDataUrl && elapsed < 20;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => step !== 'name' && step !== 'done' && e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>{t('numbers.link-dialog.title')}</DialogTitle>
+          <DialogTitle>
+            {activeSession ? `${t('numbers.link-dialog.title')} — ${activeSession.name}` : t('numbers.link-dialog.title')}
+          </DialogTitle>
           <DialogDescription>
             {step === 'name'
               ? t('numbers.link-dialog.step-name')
               : step === 'failed'
                 ? t('numbers.link-dialog.step-failed')
-                : t('numbers.link-dialog.step-qr')}
+                : step === 'done'
+                  ? t('numbers.link-dialog.connected')
+                  : t('numbers.link-dialog.step-qr')}
           </DialogDescription>
         </DialogHeader>
 
@@ -224,9 +250,16 @@ export function LinkNumberDialog({
             {liveSession.pairingCode && (
               <div className="rounded-xl bg-primary/10 px-4 py-2 text-center">
                 <p className="text-xs text-muted-foreground">{t('numbers.link-dialog.pairing-code')}</p>
-                <p dir="ltr" className="font-mono text-2xl font-bold tracking-[0.35em] text-primary">
+                <button
+                  type="button"
+                  dir="ltr"
+                  onClick={copyPairing}
+                  className="flex items-center gap-2 font-mono text-2xl font-bold tracking-[0.35em] text-primary"
+                  aria-label="copy pairing code"
+                >
                   {liveSession.pairingCode}
-                </p>
+                  <Copy className="size-4" />
+                </button>
               </div>
             )}
 
@@ -274,34 +307,46 @@ export function LinkNumberDialog({
                 {t('common.remove')}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t('numbers.link-dialog.failed-hint')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('numbers.link-dialog.failed-hint')}</p>
           </div>
         )}
 
-        {step === 'done' && (
+        {step === 'done' && liveSession && (
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <CheckCircle2 className="size-12 text-emerald-500" />
-            <p className="font-semibold">{t('numbers.link-dialog.success')}</p>
-            {liveSession?.phoneNumber && (
+            <p className="font-semibold">{t('numbers.link-dialog.connected')}</p>
+            {liveSession.phoneNumber && (
               <p dir="ltr" className="font-mono text-sm text-muted-foreground">
                 {liveSession.phoneNumber}
               </p>
             )}
-            <Button
-              onClick={() => {
-                onLinked?.();
-                setSession(null);
-                setName('');
-                setGeneratedQr(null);
-                setSubmitting(false);
-                onOpenChange(false);
-              }}
-            >
-              <QrCode className="size-4" />
-              {t('numbers.link-new')}
-            </Button>
+            <div className="flex items-center gap-2">
+              {isExisting && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    void actions.unlinkSession(liveSession.id);
+                    onOpenChange(false);
+                  }}
+                >
+                  <Unplug className="size-4" />
+                  {t('common.unlink')}
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  onLinked?.();
+                  setCreatedSession(null);
+                  setName('');
+                  setGeneratedQr(null);
+                  setSubmitting(false);
+                  onOpenChange(false);
+                }}
+              >
+                <QrCode className="size-4" />
+                {isExisting ? t('common.close') : t('numbers.link-new')}
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

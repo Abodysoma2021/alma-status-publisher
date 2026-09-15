@@ -118,8 +118,10 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
     console.log('[alma:trace] initial-load effect, bridge =', bridgeAvailable());
     if (!bridgeAvailable()) {
       console.error('[alma] bridge UNAVAILABLE — window.alma is missing. UI commands will not work.');
-      setBridgeMissing(true);
-      setReady(true);
+      void Promise.resolve().then(() => {
+        setBridgeMissing(true);
+        setReady(true);
+      });
       return;
     }
     let disposed = false;

@@ -46,11 +46,11 @@ export class JsonSessionRepository implements SessionRepository {
 
   async save(session: WhatsAppSession): Promise<void> {
     const doc = await this.store.load();
-    // Transient linking data never hits the disk.
-    const persistable: WhatsAppSession = { ...session, qrCode: undefined, pairingCode: undefined };
+    // qrCode/pairingCode persist too: the renderer polls listSessions to
+    // display the live QR while linking.
     const idx = doc.items.findIndex((s) => s.id === session.id);
-    if (idx >= 0) doc.items[idx] = persistable;
-    else doc.items.push(persistable);
+    if (idx >= 0) doc.items[idx] = session;
+    else doc.items.push(session);
     this.store.set(doc);
   }
 

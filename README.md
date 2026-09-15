@@ -18,7 +18,7 @@ Posting the same status on many WhatsApp numbers by hand is slow and easy to for
 
 ## Features
 
-- **Multi-number linking** — run as many WhatsApp accounts as you need, each isolated in its own browser session. Link via **QR** or **pairing code**.
+- **Multi-number linking** — run as many WhatsApp accounts as you need, each a lightweight protocol session (Baileys WebSocket — no browser). Link via **QR** or **pairing code**.
 - **Scheduled statuses** — text (with background/color/font styling), images, and videos with captions.
 - **Recurrence** — one-shot, daily, or weekly on selected days; timezone-aware using your machine's local time.
 - **Push to all or selected numbers** — target every linked number or hand-pick per post.
@@ -35,15 +35,15 @@ Posting the same status on many WhatsApp numbers by hand is slow and easy to for
 
 ## How linking works
 
-Alma uses [open-wa](https://github.com/open-wa/wa-automate-nodejs) (WhatsApp Web automation). Each linked number runs in a dedicated headless Chromium instance; session credentials are stored locally in your user-data folder and never leave your machine.
+Alma uses [Baileys](https://github.com/WhiskeySockets/Baileys) — the WhatsApp multi-device WebSocket protocol — directly. Each linked number is a lightweight protocol session (~50 MB RAM, no browser); session credentials are stored locally in your user-data folder and never leave your machine.
 
 1. Open **Numbers → Link a number**, give it a name.
 2. Scan the QR with the phone (WhatsApp → Settings → Linked devices), or enter the pairing code.
-3. The number turns **Connected**. Repeat for as many numbers as you like.
+3. The number turns **Connected**. Repeat for as many numbers as you like — **Show QR** reopens a live QR for any number.
 4. Create a schedule in **Scheduler**, pick content + timing + targets.
 5. Alma publishes on time. Watch results live in **History**.
 
-> **Note:** the first link downloads a Chromium build for the automation engine (one time, automatic). Your machine must be online for statuses to publish — the phone linked to each number must also be reachable.
+> **Note:** your machine must be online for statuses to publish — the phone linked to each number must also be reachable.
 
 ## Development
 
@@ -81,7 +81,7 @@ src/
 │       └── use-cases/        # StartLinking, PublishSchedule, SchedulerTick, …
 ├── infrastructure/           # ── Adapters ──
 │   ├── persistence/          # Atomic JSON stores + repositories
-│   ├── whatsapp/             # open-wa gateway (multi-session, event demux)
+│   ├── whatsapp/             # Baileys protocol gateway (multi-session)
 │   └── system/               # Clock, EventBus, IDs, MediaFileStore
 ├── presentation/             # ── UI (React 19 + Tailwind 4 + shadcn/ui) ──
 │   ├── components/           # App shell, QR dialog, schedule dialog…
@@ -120,4 +120,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-Built with ❤️ using the [open-wa](https://github.com/open-wa/wa-automate-nodejs) library. Use responsibly and in accordance with WhatsApp's terms of service.
+Built with ❤️ using the [Baileys](https://github.com/WhiskeySockets/Baileys) protocol library. Use responsibly and in accordance with WhatsApp's terms of service.

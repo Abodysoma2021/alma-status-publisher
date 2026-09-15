@@ -10,7 +10,7 @@ import {
   JsonSessionRepository,
   JsonSettingsRepository,
 } from '../src/infrastructure/persistence/json-repositories';
-import { OpenWaGateway } from '../src/infrastructure/whatsapp/open-wa-gateway';
+import { BaileysGateway } from '../src/infrastructure/whatsapp/baileys-gateway';
 import { StaticServer } from './static-server';
 import {
   buildStoragePaths,
@@ -79,7 +79,7 @@ export class AppContainer {
   readonly settings = new JsonSettingsRepository(path.join(this.paths.dataDir, 'settings.json'));
 
   readonly mediaStore = new MediaFileStore(this.paths.mediaDir, this.media);
-  readonly gateway = new OpenWaGateway(this.paths.waSessionsDir);
+  readonly gateway = new BaileysGateway(this.paths.waSessionsDir);
 
   // Application
   private readonly sessionDeps: SessionUseCaseDeps = {
