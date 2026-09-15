@@ -380,7 +380,7 @@ export function AlmaProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!bridgeAvailable()) return;
     const connected = sessions.filter((s) => s.status === 'connected').length;
-    void getBridge().setDockBadge(connected).catch(() => undefined);
+    void getBridge().commands.setDockBadge(connected).catch(() => undefined);
   }, [sessions]);
 
   const value = React.useMemo<AlmaContextValue>(

@@ -101,7 +101,29 @@ async function main() {
   preloadCtx.watch(() => restartElectron());
 
   run('next', 'npx', ['next', 'dev', '-p', '3000']);
+
+  // Electron must not navigate before the dev server answers — otherwise the
+  // window shows Chromium's "This page couldn't load" error page.
+  console.log('[dev] waiting for Next.js on :3000…');
+  const ready = await waitFor('http://127.0.0.1:3000', 120_000);
+  if (!ready) {
+    console.error('[dev] Next.js did not start within 120s — launching Electron anyway.');
+  }
   launchElectron();
+}
+
+async function waitFor(url, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.ok || res.status === 404) return true; // server is up
+    } catch {
+      /* not ready yet */
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  return false;
 }
 
 await main();

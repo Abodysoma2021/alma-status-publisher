@@ -71,12 +71,48 @@ function createWindow(): Promise<void> {
       pushEventToWindow(mainWindow, 'alma:event', { type: mapEventType(type), payload });
     });
 
-    if (IS_DEV) {
-      return mainWindow.loadURL(DEV_SERVER_URL).then(() => {
-        mainWindow?.webContents.openDevTools({ mode: 'detach' });
-      });
-    }
-    return mainWindow.loadURL(`${container!.staticServer.baseUrl}/`);
+    // Resilient renderer loading: if the first navigation fails (dev server
+    // still booting, slow machine), retry with backoff instead of leaving the
+    // user on Chromium's "This page couldn't load" error page.
+    rendererRetries = 0;
+    rendererHealthy = false;
+
+    mainWindow.webContents.on('did-finish-load', () => {
+      rendererHealthy = true;
+      rendererRetries = 0;
+    });
+
+    mainWindow.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+      if (!isMainFrame) return;
+      if (code === -3) return; // ERR_ABORTED — superseded navigation
+      if (rendererHealthy) return;
+
+      if (rendererRetries >= RENDERER_MAX_RETRIES) {
+        logCrash('renderer-load', new Error(`gave up after ${rendererRetries} retries: ${code} ${description} ${url}`));
+        return;
+      }
+      rendererRetries += 1;
+      const backoff = Math.min(500 * 2 ** (rendererRetries - 1), 5000);
+      logCrash('renderer-load', new Error(`attempt ${rendererRetries} failed (${code} ${description}) — retrying in ${backoff}ms`));
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) void loadRenderer();
+      }, backoff);
+    });
+
+    return loadRenderer();
+  });
+}
+
+const RENDERER_MAX_RETRIES = 12;
+let rendererRetries = 0;
+let rendererHealthy = false;
+
+/** Navigates the window to the renderer, swallowing load errors (retry handles them). */
+function loadRenderer(): Promise<void> {
+  if (!mainWindow) return Promise.resolve();
+  const target = IS_DEV ? DEV_SERVER_URL : `${container!.staticServer.baseUrl}/`;
+  return mainWindow.loadURL(target).catch((err) => {
+    logCrash('loadURL', err);
   });
 }
 
