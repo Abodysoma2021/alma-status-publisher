@@ -6,7 +6,21 @@
  *   3. once both are up, launches Electron; restarts it on main-process rebuild
  */
 import { spawn } from 'node:child_process';
+import * as net from 'node:net';
 import { build, context } from 'esbuild';
+
+/** Picks a free localhost port so stale servers can never collide with us. */
+async function pickFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+  });
+}
 
 const children = [];
 let electronProcess = null;
@@ -33,12 +47,13 @@ function run(name, command, args, env = {}) {
   return child;
 }
 
-function launchElectron() {
+function launchElectron(devUrl) {
   if (electronProcess) return;
   electronReady = true;
-  console.log('[electron] starting…');
+  console.log(`[electron] starting… (renderer: ${devUrl})`);
   electronProcess = run('electron', 'npx', ['electron', 'dist-electron/main.cjs'], {
     ALMA_DEV: '1',
+    ALMA_DEV_URL: devUrl,
     ELECTRON_ENABLE_LOGGING: '1',
   });
 }
@@ -100,16 +115,20 @@ async function main() {
   mainCtx.watch(() => restartElectron());
   preloadCtx.watch(() => restartElectron());
 
-  run('next', 'npx', ['next', 'dev', '-p', '3000']);
+  const port = await pickFreePort();
+  run('next', 'npx', ['next', 'dev', '-p', String(port)]);
+  const devUrl = `http://127.0.0.1:${port}`;
 
   // Electron must not navigate before the dev server answers — otherwise the
-  // window shows Chromium's "This page couldn't load" error page.
-  console.log('[dev] waiting for Next.js on :3000…');
-  const ready = await waitFor('http://127.0.0.1:3000', 120_000);
+  // window shows Chromium's "This page couldn't load" error page. We also pin
+  // the EXACT verified URL (IPv4) via ALMA_DEV_URL so the renderer cannot
+  // resolve `localhost` to ::1 and miss an IPv4-only server.
+  console.log(`[dev] waiting for Next.js on ${devUrl}…`);
+  const ready = await waitFor(devUrl, 120_000);
   if (!ready) {
     console.error('[dev] Next.js did not start within 120s — launching Electron anyway.');
   }
-  launchElectron();
+  launchElectron(devUrl);
 }
 
 async function waitFor(url, timeoutMs) {

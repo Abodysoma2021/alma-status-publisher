@@ -4,10 +4,11 @@ import * as fs from 'node:fs';
 import { initContainer } from './bootstrap';
 import { registerIpcHandlers, pushEventToWindow } from './ipc';
 import { installNativeMenu, installContextMenu, updateDockBadge } from './menus';
+import { initDebugLog, debugLog } from './debug-log';
 import type { AppContainer } from './bootstrap';
 
 const IS_DEV = process.env.ALMA_DEV === '1';
-const DEV_SERVER_URL = process.env.ALMA_DEV_URL ?? 'http://localhost:3000';
+const DEV_SERVER_URL = process.env.ALMA_DEV_URL ?? 'http://127.0.0.1:3000';
 
 let mainWindow: BrowserWindow | null = null;
 let container: AppContainer | null = null;
@@ -87,8 +88,14 @@ function createWindow(): Promise<void> {
       if (code === -3) return; // ERR_ABORTED — superseded navigation
       if (rendererHealthy) return;
 
+      debugLog('renderer', `did-fail-load code=${code} desc=${description} url=${url} attempt=${rendererRetries + 1}/${RENDERER_MAX_RETRIES}`);
       if (rendererRetries >= RENDERER_MAX_RETRIES) {
         logCrash('renderer-load', new Error(`gave up after ${rendererRetries} retries: ${code} ${description} ${url}`));
+        debugLog('renderer', 'retries exhausted — restarting retry cycle in 10s');
+        setTimeout(() => {
+          rendererRetries = 0;
+          if (mainWindow && !mainWindow.isDestroyed()) void loadRenderer();
+        }, 10_000);
         return;
       }
       rendererRetries += 1;
@@ -111,9 +118,14 @@ let rendererHealthy = false;
 function loadRenderer(): Promise<void> {
   if (!mainWindow) return Promise.resolve();
   const target = IS_DEV ? DEV_SERVER_URL : `${container!.staticServer.baseUrl}/`;
-  return mainWindow.loadURL(target).catch((err) => {
-    logCrash('loadURL', err);
-  });
+  debugLog('renderer', `loading ${target}`);
+  return mainWindow
+    .loadURL(target)
+    .then(() => debugLog('renderer', `loaded ${target}`))
+    .catch((err) => {
+      logCrash('loadURL', err);
+      debugLog('renderer', `loadURL rejected: ${err instanceof Error ? err.message : String(err)}`);
+    });
 }
 
 function mapEventType(type: string): string {
@@ -148,11 +160,15 @@ app.on('second-instance', () => {
 
 app.whenReady().then(async () => {
   try {
+    initDebugLog(app.getPath('userData'));
+    debugLog('boot', `mode: ${IS_DEV ? 'dev' : 'production'} | electron ${process.versions.electron}`);
     container = initContainer({ rendererRootDir: rendererRootDir() });
+    debugLog('boot', `renderer root: ${rendererRootDir()}`);
 
     // Always start the internal server: serves /media/* previews in dev,
     // and the exported renderer bundle in production.
-    await container.staticServer.start();
+    const port = await container.staticServer.start();
+    debugLog('boot', `static server listening on 127.0.0.1:${port}`);
 
     registerIpcHandlers(
       container,
